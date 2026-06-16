@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Focus Timer</title>
+    <style>
+        /* Base Theme & Layout */
+        body {
+            margin: 0;
+            padding: 0;
+            background: url('https://i.ibb.co/1YDh0bhH/cat-under-the-blue-sky-1.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Dark overlay */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(11, 17, 32, 0.7);
+            z-index: 0;
+        }
+
+        /* Live Clock (Top Left) */
+        .live-clock {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            z-index: 5;
+            font-size: 1.25rem;
+            font-weight: 300;
+            color: #93c5fd;
+            letter-spacing: 1px;
+            opacity: 0.85;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Center Display */
+        .main-container {
+            z-index: 1;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .stopwatch-display {
+            font-size: 6rem;
+            font-weight: 300;
+            letter-spacing: 4px;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            height: 50px;
+        }
+
+        button.control-btn {
+            background-color: rgba(30, 58, 138, 0.5);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        button.control-btn:hover {
+            background-color: rgba(37, 99, 235, 0.7);
+            border-color: #60a5fa;
+            transform: translateY(-2px);
+        }
+
+        button.control-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: #ffffff;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Custom Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-box {
+            background-color: #1a2235;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            width: 350px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: left;
+        }
+
+        .modal-box h3 {
+            margin: 0 0 1rem 0;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #e2e8f0;
+        }
+
+        .modal-box input {
+            width: 100%;
+            background-color: #0b1120;
+            border: 1px solid #3b82f6;
+            color: #e2e8f0;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            margin-bottom: 1.5rem;
+            outline: none;
+        }
+
+        .modal-box input:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .modal-buttons button {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-buttons button.save-btn {
+            background-color: #059669;
+            border: 1px solid #10b981;
+            color: white;
+        }
+
+        .modal-buttons button.save-btn:hover {
+            background-color: #10b981;
+        }
+
+        .modal-buttons button.cancel-btn {
+            background-color: transparent;
+            border: 1px solid #475569;
+            color: #cbd5e1;
+        }
+
+        /* History Panel */
+        .history-panel {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 300px;
+            height: 100vh;
+            background-color: rgba(15, 23, 42, 0.95);
+            border-left: 1px solid rgba(59, 130, 246, 0.2);
+            backdrop-filter: blur(10px);
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+            padding: 2rem 1.5rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-panel.open {
+            right: 0;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+            padding-bottom: 1rem;
+        }
+
+        .history-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 400;
+            color: #93c5fd;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+            transition: all 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .icon-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: #93c5fd;
+        }
+
+        .close-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Toggle History Button */
+        .toggle-history-btn {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 5;
+            background: transparent;
+            border: none;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .toggle-history-btn img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            filter: brightness(0) invert(1);
+            transition: transform 0.2s ease;
+            opacity: 0.85;
+        }
+
+        .toggle-history-btn:hover img {
+            transform: scale(1.1);
+            opacity: 1;
+        }
+
+        /* History List */
+        .history-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .log-entry {
+            background-color: rgba(30, 58, 138, 0.4);
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid #3b82f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .log-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: #e2e8f0;
+        }
+
+        .log-time {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .delete-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: #ffffff;
+            transition: fill 0.2s ease;
+        }
+
+        .delete-btn:hover svg {
+            fill: #ef4444;
+        }
+
+        /* Daily Total Section */
+        .daily-total-box {
+            background-color: rgba(11, 17, 32, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .daily-total-label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.25rem;
+        }
+
+        .daily-total-time {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: #bfdbfe;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="live-clock" id="live-clock">--:--</div>
+
+    <button class="toggle-history-btn" onclick="togglePanel()" title="Open Study Logs">
+        <img src="https://i.ibb.co/qYb0n6bY/32223.png" alt="History Icon">
+    </button>
+
+    <div class="main-container">
+        <div class="stopwatch-display" id="display">00:00:00</div>
+        
+        <div class="btn-group" id="initial-controls">
+            <button class="control-btn" onclick="startTimer()" title="Play">
+                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+        </div>
+
+        <div class="btn-group hidden" id="active-controls">
+            <button class="control-btn" onclick="pauseTimer()" id="pause-btn" title="Pause/Resume">
+                <svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+            <button class="control-btn" onclick="stopTimer()" title="Stop">
+                <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>
+            </button>
+            <button class="control-btn" onclick="openModal()" title="Save Log">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="save-modal">
+        <div class="modal-box">
+            <h3>Name the log</h3>
+            <input type="text" id="log-name-input" placeholder="e.g. Physics Chapter 3" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+                <button class="save-btn" onclick="confirmSave()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="history-panel" id="history-panel">
+        <div class="history-header">
+            <h2>Study Logs</h2>
+            <div class="header-actions">
+                <button class="icon-btn" onclick="exportCSV()" title="Download CSV">
+                    <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                </button>
+                <button class="icon-btn close-btn" onclick="togglePanel()" title="Close">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="history-list" id="history-list">
+            </div>
+
+        <div class="daily-total-box">
+            <div class="daily-total-label">Total Today</div>
+            <div class="daily-total-time" id="daily-total-time">0s</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Your Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyArTHvoVJHZKViEfL-2FKSzPBgADKA0O4s",
+            authDomain: "stopwatch-f3922.firebaseapp.com",
+            projectId: "stopwatch-f3922",
+            storageBucket: "stopwatch-f3922.firebasestorage.app",
+            messagingSenderId: "209225124056",
+            appId: "1:209225124056:web:492e8b3dd142a01cd72fad"
+        };
+
+        // Initialize Firebase & Database
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- Live Clock Logic ---
+        const liveClockDisplay = document.getElementById('live-clock');
+
+        function updateLiveClock() {
+            const now = new Date();
+            liveClockDisplay.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
+
+        // --- Stopwatch Logic ---
+        let startTime = 0;
+        let elapsedTime = 0;
+        let timerInterval;
+        let isRunning = false;
+        let wasRunningBeforeModal = false;
+
+        const display = document.getElementById('display');
+        const initialControls = document.getElementById('initial-controls');
+        const activeControls = document.getElementById('active-controls');
+        const pauseBtn = document.getElementById('pause-btn');
+        const historyList = document.getElementById('history-list');
+        const historyPanel = document.getElementById('history-panel');
+        const saveModal = document.getElementById('save-modal');
+        const logInput = document.getElementById('log-name-input');
+        const dailyTotalDisplay = document.getElementById('daily-total-time');
+
+        const playIconSVG = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+        const pauseIconSVG = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+
+        // Audio Engine
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        window.playSound = function(type) {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            
+            if (type === 'start') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(500, now);
+                gainNode.gain.setValueAtTime(0.05, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                oscillator.start(now);
+                oscillator.stop(now + 0.1);
+            } else if (type === 'save') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(600, now);
+                oscillator.frequency.exponentialRampToValueAtTime(1000, now + 0.15);
+                gainNode.gain.setValueAtTime(0.05, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                oscillator.start(now);
+                oscillator.stop(now + 0.2);
+            } else { 
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(300, now);
+                gainNode.gain.setValueAtTime(0.05, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                oscillator.start(now);
+                oscillator.stop(now + 0.1);
+            }
+        }
+
+        function getFormattedDate() {
+            const date = new Date();
+            const options = { day: 'numeric', month: 'short', year: 'numeric' };
+            return date.toLocaleDateString('en-GB', options); 
+        }
+
+        function updateDisplay() {
+            const time = elapsedTime;
+            const hours = Math.floor(time / 3600000).toString().padStart(2, '0');
+            const minutes = Math.floor((time % 3600000) / 60000).toString().padStart(2, '0');
+            const seconds = Math.floor((time % 60000) / 1000).toString().padStart(2, '0');
+            display.textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // Attach functions to window object so HTML buttons can trigger them from module
+        window.startTimer = function() {
+            if (!isRunning) {
+                window.playSound('start');
+                startTime = Date.now() - elapsedTime;
+                timerInterval = setInterval(() => {
+                    elapsedTime = Date.now() - startTime;
+                    updateDisplay();
+                }, 100);
+                isRunning = true;
+                
+                initialControls.classList.add('hidden');
+                activeControls.classList.remove('hidden');
+                pauseBtn.innerHTML = pauseIconSVG;
+            }
+        }
+
+        window.pauseTimer = function() {
+            window.playSound('pause');
+            if (isRunning) {
+                clearInterval(timerInterval);
+                isRunning = false;
+                pauseBtn.innerHTML = playIconSVG;
+            } else {
+                window.startTimer();
+            }
+        }
+
+        window.stopTimer = function() {
+            window.playSound('pause');
+            clearInterval(timerInterval);
+            isRunning = false;
+            elapsedTime = 0;
+            updateDisplay();
+            
+            initialControls.classList.remove('hidden');
+            activeControls.classList.add('hidden');
+            pauseBtn.innerHTML = pauseIconSVG;
+        }
+
+        window.openModal = function() {
+            window.playSound('pause');
+            wasRunningBeforeModal = isRunning;
+            if (wasRunningBeforeModal) window.pauseTimer();
+            
+            saveModal.classList.remove('hidden');
+            logInput.value = '';
+            logInput.focus();
+        }
+
+        window.closeModal = function() {
+            saveModal.classList.add('hidden');
+            if (wasRunningBeforeModal) window.startTimer();
+        }
+
+        window.confirmSave = async function() {
+            const sessionName = logInput.value.trim();
+            
+            if (sessionName !== "") {
+                window.playSound('save');
+                
+                // Add to Firebase Firestore
+                try {
+                    await addDoc(collection(db, "studyLogs"), {
+                        name: sessionName,
+                        time: display.textContent,
+                        date: getFormattedDate(),
+                        timestamp: serverTimestamp() // Allows precise sorting
+                    });
+                } catch (e) {
+                    console.error("Error adding document: ", e);
+                }
+                
+                if (!historyPanel.classList.contains('open')) {
+                    window.togglePanel();
+                }
+                
+                saveModal.classList.add('hidden');
+            } else {
+                logInput.style.borderColor = '#ef4444';
+                setTimeout(() => logInput.style.borderColor = '#3b82f6', 1000);
+            }
+        }
+
+        logInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                window.confirmSave();
+            }
+        });
+
+        window.togglePanel = function() {
+            window.playSound('pause');
+            historyPanel.classList.toggle('open');
+        }
+
+        window.deleteLog = async function(id) {
+            window.playSound('pause');
+            // Delete from Firebase Firestore
+            try {
+                await deleteDoc(doc(db, "studyLogs", id));
+            } catch (e) {
+                console.error("Error deleting document: ", e);
+            }
+        }
+
+        // --- Global cache for CSV export ---
+        window.cachedLogs = [];
+
+        // --- Firebase Real-Time Listener ---
+        // Automatically fetches logs and updates UI whenever the database changes
+        const logsQuery = query(collection(db, "studyLogs"), orderBy("timestamp", "desc"));
+        onSnapshot(logsQuery, (snapshot) => {
+            const logs = [];
+            snapshot.forEach((doc) => {
+                logs.push({ id: doc.id, ...doc.data() });
+            });
+            window.cachedLogs = logs;
+            renderLogs(logs);
+        });
+
+        function renderLogs(logs) {
+            historyList.innerHTML = '';
+            calculateDailyTotal(logs);
+
+            if (logs.length === 0) {
+                historyList.innerHTML = '<div style="color: #64748b; text-align: center; margin-top: 2rem;">No logs yet.</div>';
+                return;
+            }
+
+            logs.forEach((log) => {
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.innerHTML = `
+                    <div class="log-content">
+                        <div class="log-name">${log.name}</div>
+                        <div class="log-time">${log.time} &nbsp;•&nbsp; ${log.date}</div>
+                    </div>
+                    <button class="delete-btn" onclick="deleteLog('${log.id}')" title="Delete Log">
+                        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    </button>
+                `;
+                historyList.appendChild(entry);
+            });
+        }
+
+        function calculateDailyTotal(logs) {
+            const today = getFormattedDate(); 
+            let totalSeconds = 0;
+
+            logs.forEach(log => {
+                if (log.date === today) {
+                    const parts = log.time.split(':');
+                    if (parts.length === 3) {
+                        totalSeconds += (parseInt(parts[0]) * 3600) + (parseInt(parts[1]) * 60) + parseInt(parts[2]);
+                    }
+                }
+            });
+
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+
+            let timeStr = '';
+            if (h > 0) timeStr += `${h}h `;
+            if (m > 0 || h > 0) timeStr += `${m}m `;
+            timeStr += `${s}s`;
+
+            if(totalSeconds === 0) timeStr = "0s";
+
+            dailyTotalDisplay.textContent = timeStr;
+        }
+
+        window.exportCSV = function() {
+            window.playSound('save');
+            const logs = window.cachedLogs;
+            if (logs.length === 0) {
+                alert("No logs to export yet!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Task Name,Duration,Date\n";
+
+            logs.forEach(log => {
+                const safeName = log.name ? log.name.replace(/"/g, '""') : "Unknown";
+                const time = log.time || "00:00:00";
+                const date = log.date || "Unknown Date";
+                csvContent += `"${safeName}","${time}","${date}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Study_Logs.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
